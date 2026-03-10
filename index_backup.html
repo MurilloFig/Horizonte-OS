@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>HORIZONTE OS - Valenko Lab Terminal</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config={darkMode:"class",theme:{extend:{colors:{primary:"#245edb","background-light":"#f6f6f8","background-dark":"#121620","xp-blue":"#245edb","xp-green":"#3c911a","xp-orange":"#f48420"},fontFamily:{display:["Space Grotesk","sans-serif"]},keyframes:{shake:{'0%,100%':{transform:'translateX(0)'},'10%,30%,50%,70%,90%':{transform:'translateX(-5px)'},'20%,40%,60%,80%':{transform:'translateX(5px)'}}},animation:{shake:'shake 0.4s ease-in-out'}}}}
+    </script>
+    <style>
+        .desktop-bg {
+            background: url('https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=2070&auto=format&fit=crop'); /* XP/Win7 bliss feel */
+            background-size: cover; background-position: center bottom; transition: all 4s ease;
+        }
+        .desktop-bg.stabilized {
+            background: linear-gradient(to bottom, rgba(36,219,137,0.2), rgba(18,32,25,0.8)), url('https://images.unsplash.com/photo-1419242902214-272b3866c070?q=80&w=2069&auto=format&fit=crop');
+            background-size: cover; background-position: center;
+        }
+        .window-shadow { box-shadow: 2px 4px 10px rgba(0,0,0,0.5); }
+        .sys-window { border-top: 3px solid #3b82f6; border-radius: 8px 8px 0 0; } /* Luna Feel */
+        .window-header { background: linear-gradient(to bottom, #0058e6 0%, #3a93ff 8%, #288eff 40%, #127dff 88%, #036bfe 100%); }
+        .taskbar-gradient { background: linear-gradient(to bottom, #245edb 0%, #1e4eb5 10%, #194095 100%); }
+        .start-button-gradient { background: linear-gradient(to bottom, #4cb02a 0%, #3c911a 50%, #2e7014 100%); border-radius: 0 16px 16px 0; box-shadow: inset -1px 0px 3px rgba(255,255,255,0.5); }
+        .draggable-handle, .icon-draggable { cursor: grab; }
+        .draggable-handle:active, .icon-draggable:active { cursor: grabbing; }
+    </style>
+</head>
+<body class="font-display bg-background-light overflow-hidden h-screen w-screen select-none text-sm" oncontextmenu="return false;">
+<!-- Desktop -->
+<main id="desktop" class="relative h-full w-full desktop-bg p-4" onclick="hideContextMenu()">
+    <div id="desktop-icons-container" class="absolute w-full h-[calc(100vh-60px)] top-0 left-0 pointer-events-none"></div>
+
+    <!-- WINDOWS TEMPLATES -->
+    <!-- Notepad -->
+    <div id="window-notepad" class="sys-window absolute w-full max-w-2xl bg-[#f0f2f4] hidden flex flex-col window-shadow" style="left:25%; top:15%; z-index:10;">
+        <div class="window-header draggable-handle px-3 py-1.5 flex items-center justify-between text-white border-b border-blue-900 rounded-t-lg">
+            <div class="flex items-center gap-2 pointer-events-none drop-shadow"><span class="material-symbols-outlined text-sm">description</span><span id="notepad-title" class="text-sm font-bold tracking-tight">Notepad</span></div>
+            <button class="w-6 h-6 flex items-center justify-center bg-red-600 hover:bg-red-500 border border-white/40 rounded-sm text-white shadow-sm" onclick="closeWindow('window-notepad')"><span class="material-symbols-outlined text-xs">close</span></button>
+        </div>
+        <div class="bg-[#ece9d8] border-b border-slate-300 px-2 py-1 flex gap-2"><button class="text-xs hover:bg-white px-2 py-1 rounded shadow-sm border border-transparent hover:border-slate-300" onclick="saveNotepadFile()">Save</button></div>
+        <div class="bg-white font-mono text-sm leading-relaxed text-slate-800 h-[400px] flex flex-col">
+            <input type="hidden" id="notepad-file-id" value="">
+            <textarea id="notepad-content" class="w-full h-full p-6 outline-none resize-none" spellcheck="false"></textarea>
+        </div>
+    </div>
+
+    <!-- Explorer: My Documents -->
+    <div id="window-explorer" class="sys-window absolute w-[600px] h-[400px] bg-[#f0f2f4] hidden flex flex-col window-shadow" style="left: 20%; top: 20%; z-index:10;">
+        <div class="window-header draggable-handle px-3 py-1.5 flex items-center justify-between text-white border-b border-blue-900 rounded-t-lg">
+            <div class="flex items-center gap-2 pointer-events-none drop-shadow"><span class="material-symbols-outlined text-sm text-yellow-300">folder_open</span><span class="text-sm font-bold">My Documents</span></div>
+            <button class="w-6 h-6 flex items-center justify-center bg-red-600 hover:bg-red-500 border border-white/40 rounded-sm text-white shadow-sm" onclick="closeWindow('window-explorer')"><span class="material-symbols-outlined text-xs">close</span></button>
+        </div>
+        <div class="bg-white flex-1 p-4 flex gap-4 content-start flex-wrap overflow-y-auto relative" id="explorer-content">
+            <!-- Files injected here -->
+        </div>
+        <div class="bg-[#ece9d8] border-t border-slate-300 px-3 py-1 text-[10px] text-slate-600 flex justify-between"><span id="exp-count">0 object(s)</span><span>My Computer</span></div>
+    </div>
+
+    <!-- Horizon Web Browser -->
+    <div id="window-browser" class="sys-window absolute w-full max-w-4xl h-[600px] bg-[#f0f2f4] hidden flex flex-col window-shadow" style="left: 10%; top: 10%; z-index:10;">
+        <div class="window-header draggable-handle px-3 py-1.5 flex items-center justify-between text-white border-b border-blue-900 rounded-t-lg">
+            <div class="flex items-center gap-2 pointer-events-none drop-shadow"><span class="material-symbols-outlined text-sm text-blue-200">public</span><span class="text-sm font-bold">Horizon Explorer</span></div>
+            <button class="w-6 h-6 flex items-center justify-center bg-red-600 hover:bg-red-500 border border-white/40 rounded-sm text-white shadow-sm" onclick="closeWindow('window-browser')"><span class="material-symbols-outlined text-xs">close</span></button>
+        </div>
+        <div class="bg-[#ece9d8] border-b border-slate-300 p-2 flex gap-2 items-center">
+            <div class="flex gap-1 text-slate-500"><span class="material-symbols-outlined p-1 hover:bg-white rounded cursor-pointer">arrow_back</span><span class="material-symbols-outlined p-1 hover:bg-white rounded cursor-pointer">arrow_forward</span><span class="material-symbols-outlined p-1 hover:bg-white rounded cursor-pointer" onclick="renderBrowser()">refresh</span></div>
+            <div class="flex-1 bg-white border border-slate-400 shadow-inner px-2 py-1 text-xs text-slate-600 flex items-center gap-2"><span class="material-symbols-outlined text-xs">lock</span> http://g11.news.com.br/local/anomalia-montanhas</div>
+        </div>
+        <div class="bg-white flex-1 overflow-y-auto" id="browser-content">
+            <!-- Dynamic Browser Content -->
+        </div>
+    </div>
+
+
+    <!-- PUZZLE APPS -->
+    <!-- App 1: External Device -->
+    <div id="app-external" class="sys-window absolute w-80 bg-[#ece9d8] window-shadow hidden" style="left: 40%; top: 40%; z-index: 10;">
+        <div class="window-header draggable-handle px-3 py-1.5 flex items-center justify-between text-white rounded-t-lg">
+            <div class="flex items-center gap-2 pointer-events-none drop-shadow"><span class="material-symbols-outlined text-sm text-slate-200">usb</span><span class="text-sm font-bold">USB Mount Utility</span></div>
+            <button class="w-6 h-6 flex items-center justify-center bg-red-600 hover:bg-red-500 border border-white/40 rounded-sm" onclick="closeWindow('app-external')"><span class="material-symbols-outlined text-xs">close</span></button>
+        </div>
+        <div class="p-4 flex flex-col gap-3">
+            <p class="text-[11px] text-slate-800 border-b border-slate-300 pb-2 mb-2 leading-tight">Encrypted volume detected. Please enter physical device key to mount.</p>
+            <input type="text" id="input-external" class="border border-blue-400 p-1.5 w-full text-sm uppercase font-mono shadow-inner outline-blue-500" placeholder="Enter Key..." autocomplete="off">
+            <p id="err-external" class="text-xs text-red-600 hidden m-0 font-bold">Invalid key.</p>
+            <button class="bg-gradient-to-b from-white to-slate-200 border border-slate-400 px-3 py-1.5 text-sm shadow-sm hover:from-blue-50 hover:to-blue-100 active:bg-slate-300 font-medium rounded" onclick="checkPuzzle('external', 'VX-117-A', ['app-audio-icn'])">Mount Device</button>
+        </div>
+    </div>
+
+    <!-- App 2: Signal Decoder -->
+    <div id="app-signal" class="sys-window absolute w-80 bg-[#ece9d8] window-shadow hidden" style="left: 45%; top: 45%; z-index: 10;">
+        <div class="window-header draggable-handle px-3 py-1.5 flex items-center justify-between text-white rounded-t-lg">
+            <div class="flex items-center gap-2 pointer-events-none drop-shadow"><span class="material-symbols-outlined text-sm text-green-300">graphic_eq</span><span class="text-sm font-bold">Signal Decoder</span></div>
+            <button class="w-6 h-6 flex items-center justify-center bg-red-600 hover:bg-red-500 border border-white/40 rounded-sm" onclick="closeWindow('app-signal')"><span class="material-symbols-outlined text-xs">close</span></button>
+        </div>
+        <div class="p-4 flex flex-col gap-3">
+            <div class="h-16 w-full bg-black flex items-center justify-center gap-[2px] overflow-hidden px-2 rounded border border-slate-400 shadow-inner" id="signal-waves">
+                <div class="w-2 bg-green-500 h-2 animate-[pulse_0.5s_infinite]"></div><div class="w-2 bg-green-400 h-6 animate-[pulse_0.8s_infinite] delay-75"></div><div class="w-2 bg-green-600 h-10 animate-[pulse_1.2s_infinite]"></div><div class="w-2 bg-green-400 h-4 animate-[pulse_0.6s_infinite] delay-100"></div><div class="w-2 bg-green-500 h-2 animate-[pulse_0.4s_infinite]"></div>
+            </div>
+            <p class="text-[11px] text-slate-800 leading-tight">Audio payload detected. Enter translated plaintext:</p>
+            <input type="text" id="input-signal" class="border border-blue-400 p-1.5 w-full text-sm uppercase font-mono shadow-inner outline-blue-500" placeholder="Decoded Text..." autocomplete="off">
+            <p id="err-signal" class="text-xs text-red-600 hidden m-0 font-bold">Translation mismatch.</p>
+            <button class="bg-gradient-to-b from-white to-slate-200 border border-slate-400 px-3 py-1.5 text-sm shadow-sm hover:from-blue-50 hover:to-blue-100 active:bg-slate-300 font-medium rounded" onclick="checkPuzzle('signal', 'VALENKO', ['app-archive-icn'])">Verify Sequence</button>
+        </div>
+    </div>
+
+    <!-- App 3: Star Map -->
+    <div id="app-starmap" class="sys-window absolute w-96 bg-[#101935] window-shadow hidden" style="left: 50%; top: 30%; z-index: 10; border-top-color:#1e3a8a;">
+        <div class="draggable-handle bg-[#0b1021] px-3 py-1.5 flex items-center justify-between text-blue-200 border-b border-blue-800 rounded-t-lg">
+            <div class="flex items-center gap-2 pointer-events-none"><span class="material-symbols-outlined text-sm">map</span><span class="text-sm font-bold tracking-widest">STAR MAP LOCALIZER</span></div>
+            <button class="w-6 h-6 bg-red-900 border border-red-700 hover:bg-red-800 rounded-sm flex items-center justify-center text-white text-xs" onclick="closeWindow('app-starmap')">X</button>
+        </div>
+        <div class="p-4 font-mono flex flex-col gap-4">
+            <div class="border border-blue-800 h-40 relative bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/40 via-[#0b1021] to-[#0b1021] overflow-hidden shadow-inner">
+                <div class="absolute inset-0 opacity-30" style="background-image: radial-gradient(#60a5fa 1px, transparent 1px); background-size: 20px 20px;"></div>
+                <div class="absolute top-1/2 left-1/2 w-8 h-8 border border-green-500/50 rounded-full -translate-x-1/2 -translate-y-1/2 flex items-center justify-center"><div class="w-1 h-1 bg-green-500 rounded-full animate-ping"></div></div>
+                <div class="absolute inset-x-0 top-1/2 h-[1px] bg-blue-900/50"></div><div class="absolute inset-y-0 left-1/2 w-[1px] bg-blue-900/50"></div>
+            </div>
+            <div class="flex justify-center items-center gap-3">
+                <div class="flex flex-col items-center"><span class="text-[10px] text-blue-500 mb-1">DECLINATION</span><input type="text" id="input-starmap-1" class="bg-black border border-blue-800 p-1.5 w-24 text-base text-center text-green-400 focus:outline-blue-500 shadow-inner" placeholder="00.00" autocomplete="off"></div>
+                <div class="flex flex-col items-center"><span class="text-[10px] text-blue-500 mb-1">RIGHT ASCENSION</span><input type="text" id="input-starmap-2" class="bg-black border border-blue-800 p-1.5 w-24 text-base text-center text-green-400 focus:outline-blue-500 shadow-inner" placeholder="00.00" autocomplete="off"></div>
+            </div>
+            <p id="err-starmap" class="text-xs text-red-500 hidden m-0 text-center font-bold">Target sector not found.</p>
+            <button class="bg-[#152445] border border-blue-600 px-3 py-2 text-sm shadow hover:bg-blue-800 text-cyan-200 tracking-widest uppercase font-bold transition-all" onclick="checkPuzzle('starmap', '18.36 42.11', ['app-observatory-icn'])">Lock Coordinates</button>
+        </div>
+    </div>
+
+    <!-- App 4: Observatory Control -->
+    <div id="app-observatory" class="sys-window absolute w-80 bg-slate-900 window-shadow hidden text-white" style="left: 10%; top: 40%; z-index: 10; border-top-color:#0f172a;">
+        <div class="draggable-handle bg-black px-3 py-1.5 flex items-center justify-between border-b border-slate-700 rounded-t-lg">
+            <div class="flex items-center gap-2 pointer-events-none"><span class="material-symbols-outlined text-sm text-slate-400">satellite_alt</span><span class="text-sm font-bold text-slate-300">OBSERVATORY M2</span></div>
+            <button class="w-6 h-6 bg-red-900 border border-red-700 hover:bg-red-800 rounded-sm flex items-center justify-center text-xs" onclick="closeWindow('app-observatory')">X</button>
+        </div>
+        <div class="p-4 flex flex-col gap-4 text-center">
+            <span class="text-xs text-slate-400 uppercase tracking-widest mt-2">Telescope Inclination</span>
+            <div class="text-6xl font-mono text-cyan-400 font-bold tracking-tighter drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] bg-black py-4 border border-slate-800 rounded shadow-inner" id="obs-value">00°</div>
+            <div class="py-2"><input type="range" id="input-observatory" min="0" max="90" value="0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer" oninput="document.getElementById('obs-value').innerText = this.value.padStart(2, '0') + '°'"></div>
+            <p id="err-observatory" class="text-xs text-red-400 hidden m-0 font-bold uppercase tracking-widest">Alignment failed.</p>
+            <button class="bg-slate-800 border border-slate-600 px-3 py-3 text-sm shadow hover:bg-slate-700 font-bold uppercase tracking-wider transition-all" onclick="checkPuzzle('observatory', '62', ['app-minigame-icn'])">Start Alignment</button>
+        </div>
+    </div>
+
+    <!-- App 5a: Bypass -->
+    <div id="app-minigame" class="sys-window absolute w-64 bg-[#110000] window-shadow hidden text-white" style="left: 55%; top: 20%; z-index: 10; border-top-color:#7f1d1d;">
+        <div class="draggable-handle bg-[#3a0000] px-3 py-1.5 flex items-center justify-between border-b border-[#5c0000] rounded-t-lg">
+            <div class="flex items-center gap-2 pointer-events-none text-red-300"><span class="material-symbols-outlined text-sm">memory</span><span class="text-sm font-bold">Bypass.exe</span></div>
+            <button class="w-6 h-6 bg-red-900 hover:bg-red-800 rounded-sm font-xs" onclick="closeWindow('app-minigame')">O</button>
+        </div>
+        <div class="p-5 flex flex-col gap-5 items-center bg-[linear-gradient(rgba(255,0,0,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,0,0,0.05)_1px,transparent_1px)] bg-[size:10px_10px]" id="minigame-container">
+            <p class="text-[10px] text-red-500 text-center uppercase tracking-widest animate-pulse font-bold">Manual Override Required</p>
+            <div class="grid grid-cols-2 gap-3 w-full px-4">
+                <button class="h-12 border border-red-800 bg-red-950/80 hover:bg-red-900 text-transparent active:text-white transition-colors duration-75 flex items-center justify-center font-bold overflow-hidden shadow-inner" onclick="minigameClick(this)">1</button>
+                <button class="h-12 border border-red-800 bg-red-950/80 hover:bg-red-900 text-transparent active:text-white transition-colors duration-75 flex items-center justify-center font-bold overflow-hidden shadow-inner" onclick="minigameClick(this)">2</button>
+                <button class="h-12 border border-red-800 bg-red-950/80 hover:bg-red-900 text-transparent active:text-white transition-colors duration-75 flex items-center justify-center font-bold overflow-hidden shadow-inner" onclick="minigameClick(this)">3</button>
+                <button class="h-12 border border-red-800 bg-red-950/80 hover:bg-red-900 text-transparent active:text-white transition-colors duration-75 flex items-center justify-center font-bold overflow-hidden shadow-inner" onclick="minigameClick(this)">4</button>
+            </div>
+        </div>
+        <div class="p-6 flex flex-col gap-4 items-center hidden h-[220px]" id="minigame-success">
+            <span class="text-green-500 font-bold tracking-widest uppercase">Success</span>
+            <div class="w-full h-full bg-slate-900 p-2 border border-green-900 flex items-center justify-center mt-2 shadow-inner"><span class="text-white font-mono text-xl tracking-widest drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]">OBSERVER</span></div>
+            <span class="text-[9px] text-slate-400 text-center mt-2 uppercase tracking-wide">Fragment Acquired.</span>
+        </div>
+    </div>
+
+    <!-- App 5b: Filter Console -->
+    <div id="app-filter" class="sys-window absolute w-[400px] bg-[#000] window-shadow hidden" style="left: 30%; top: 35%; z-index: 10; border-top-color:#1e3a8a;">
+        <div class="draggable-handle bg-blue-900 px-3 py-2 flex items-center justify-between text-white border-b border-blue-500 rounded-t-lg shadow-sm">
+            <div class="flex items-center gap-2 pointer-events-none text-blue-100 font-mono tracking-widest"><span class="material-symbols-outlined text-sm">admin_panel_settings</span><span class="text-sm font-bold uppercase tracking-wider">Main Terminal</span></div>
+            <button class="w-6 h-6 bg-red-600 border border-red-400 hover:bg-red-500 rounded-sm text-xs" onclick="closeWindow('app-filter')">X</button>
+        </div>
+        <div class="p-6 flex flex-col gap-5 bg-slate-900">
+            <div class="text-justify text-[11px] text-blue-200 uppercase tracking-widest border-b border-blue-800 pb-3 leading-relaxed">
+                <span class="text-yellow-400 font-bold">WRN:</span> Engaging Observer Filter requires full structural sequence. Invalid sequence halts resonance overload.
+            </div>
+            <div class="flex flex-col gap-2">
+                <p class="text-[10px] text-zinc-400 uppercase tracking-widest">Input Complete Override:</p>
+                <input type="text" id="input-filter" class="bg-black border-2 border-blue-900 p-3 w-full text-xl uppercase font-mono text-center text-green-400 focus:outline-none focus:border-blue-500 transition-colors shadow-inner" placeholder="XXXX-XXXX" autocomplete="off">
+            </div>
+            <p id="err-filter" class="text-xs text-red-500 hidden m-0 text-center uppercase tracking-widest font-bold bg-red-950/20 py-1 rounded">Sequence Invalid</p>
+            <button class="bg-blue-800 border border-blue-500 px-3 py-4 text-sm shadow hover:bg-blue-700 active:bg-blue-500 font-bold uppercase tracking-widest text-white mt-2 transition-colors" onclick="checkPuzzle('filter', 'OBSERVER-FILTER', [])">Engage Filter</button>
+        </div>
+    </div>
+
+    <!-- Final Narrative Modal -->
+    <div id="modal-final" class="sys-window absolute w-full max-w-2xl bg-[#ece9d8] window-shadow hidden flex-col" style="left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 100;">
+         <div class="draggable-handle cursor-default bg-gradient-to-r from-emerald-800 to-teal-700 px-3 py-2 flex items-center justify-between text-white border-b border-emerald-900 rounded-t-lg shadow-sm">
+            <div class="flex items-center gap-2 pointer-events-none animate-pulse"><span class="material-symbols-outlined text-sm text-yellow-300">verified</span><span class="text-sm font-bold tracking-tight">System Stabilized - Priority Log #00</span></div>
+            <button class="w-6 h-6 flex items-center justify-center bg-transparent border border-white/20 hover:bg-black/20 rounded-sm" onclick="closeWindow('modal-final')"><span class="material-symbols-outlined text-xs">close</span></button>
+        </div>
+        <div class="bg-white p-10 font-serif text-base leading-relaxed text-slate-800 h-96 overflow-y-auto shadow-inner selec-text">
+            <h1 class="text-3xl text-emerald-800 font-bold mb-8 text-center border-b pb-4 border-slate-100 uppercase tracking-widest">Observation Stabilized</h1>
+            <p class="mb-5 text-justify">Se você está lendo isso, o Filtro foi ativado. A ressonância ao nosso redor deve estar se acalmando.</p>
+            <p class="mb-5 text-justify">Passei meses estudando a anomalia através do telescópio, meses tentando criar paredes cada vez mais altas para conter o que eu achava que era uma invasão. Eu estava errado.</p>
+            <div class="my-10 p-6 bg-emerald-50 border-l-4 border-emerald-600 shadow-sm rounded-r"><p class="font-bold text-xl text-center text-emerald-900 antialiased">O Visitante não é um inimigo.</p></div>
+            <p class="mb-5 text-justify">Ele não entende nossa agressão, assim como não entende nosso medo. O verdadeiro perigo, meus amigos, é o eco que fica quando tentamos incompreendê-lo e forçá-lo a caber na nossa lógica matemática de guerra.</p>
+            <p class="mb-5 text-justify">O Filtro não afasta o Visitante. Ele nos esconde de nossos próprios reflexos distorcidos na fenda, permitindo que Ele passe sem ferir a sanidade do laboratório.</p>
+            <p class="mt-12 text-lg italic text-slate-600">Nós sobrevivemos não por atacar, mas por saber observar corretamente.</p>
+            <p class="text-right font-bold mt-4 text-emerald-900 tracking-wide">— Dr. Valenko</p>
+        </div>
+    </div>
+
+    <!-- Security/Password Prompt Modal -->
+    <div id="modal-prompt" class="sys-window absolute w-80 bg-[#ece9d8] window-shadow hidden flex-col" style="left: 0; top: 0; z-index: 100;">
+        <div class="window-header bg-gradient-to-r from-red-700 to-red-800 px-3 py-1.5 flex items-center justify-between text-white border-b border-red-900 rounded-t-lg shadow-sm">
+            <div class="flex items-center gap-2 pointer-events-none drop-shadow"><span class="material-symbols-outlined text-sm text-yellow-300" id="prompt-icon">lock</span><span class="text-sm font-bold tracking-tight" id="prompt-title">Security</span></div>
+            <button class="w-6 h-6 hover:bg-black/20 rounded-sm flex items-center justify-center border border-transparent hover:border-white/30" onclick="closePrompt()"><span class="material-symbols-outlined text-xs">close</span></button>
+        </div>
+        <div class="p-4 bg-white flex flex-col gap-3 shadow-inner">
+            <p id="prompt-desc" class="text-xs text-slate-700 leading-tight">Enter password:</p>
+            <input type="text" id="prompt-input" class="border border-slate-400 shadow-inner p-1.5 w-full text-sm outline-blue-500 font-mono uppercase" autocomplete="off">
+            <p id="prompt-err" class="text-xs text-red-600 hidden m-0 font-bold uppercase tracking-widest">Authentication Failed.</p>
+            <div class="flex justify-end gap-2 mt-2">
+                <button class="border border-slate-300 bg-slate-100 hover:bg-slate-200 px-3 py-1 text-xs rounded shadow-sm" onclick="closePrompt()">Cancel</button>
+                <button class="border border-slate-400 bg-slate-300 shadow-sm hover:bg-slate-400 px-4 py-1 flex items-center gap-1 font-bold text-xs rounded" id="prompt-confirm">OK</button>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+
+<!-- Context Menus -->
+<div id="desktop-context-menu" class="fixed bg-[#f0f0f0] border border-slate-400 shadow-lg hidden flex-col text-xs z-[150] min-w-[150px] py-1">
+    <div class="px-6 py-1.5 hover:bg-[#316ac5] hover:text-white cursor-pointer transition-colors" onclick="createFile('text')">Novo Documento de Texto</div>
+    <div class="px-6 py-1.5 hover:bg-[#316ac5] hover:text-white cursor-pointer border-t border-slate-300 text-slate-500 mt-1 pt-2 transition-colors" onclick="alert('Propriedades da Tela')">Propriedades</div>
+</div>
+
+<div id="file-context-menu" class="fixed bg-[#f0f0f0] border border-slate-400 shadow-lg hidden flex-col text-xs z-[150] min-w-[150px] py-1">
+    <div class="px-6 py-1.5 hover:bg-[#316ac5] hover:text-white cursor-pointer font-bold transition-colors" id="cm-open" onclick="contextOpenFile()">Abrir</div>
+    <div class="px-6 py-1.5 hover:bg-[#316ac5] hover:text-white cursor-pointer transition-colors" id="cm-password" onclick="contextSetPassword()">Definir Senha...</div>
+    <div class="px-6 py-1.5 hover:bg-red-600 hover:text-white cursor-pointer border-t border-slate-300 mt-1 pt-2 transition-colors" id="cm-delete" onclick="contextDeleteFile()">Excluir / P/ Lixeira</div>
+</div>
+
+<!-- Taskbar & Menu Iniciar -->
+<div id="wifi-menu" class="fixed bottom-14 right-4 w-64 bg-white rounded shadow-2xl border border-slate-400 hidden z-[100] p-2 flex flex-col gap-2">
+    <div class="font-bold text-xs text-slate-600 px-2 uppercase tracking-wide border-b border-slate-200 pb-1">Conexões de Rede</div>
+    <div class="flex items-center gap-3 p-2 hover:bg-[#316ac5] hover:text-white rounded cursor-pointer group" onclick="connectWifiPrompt()">
+        <span class="material-symbols-outlined text-slate-500 group-hover:text-white text-lg">wifi_lock</span>
+        <div class="flex flex-col"><span class="text-sm font-bold leading-tight">Valenko_Lab_5G</span><span class="text-[10px] opacity-70" id="wifi-status-text">Seguro (Desconectado)</span></div>
+    </div>
+</div>
+
+<footer class="fixed bottom-0 left-0 w-full h-[30px] taskbar-gradient flex items-center justify-between px-0 z-[80] shadow-[0_-2px_4px_rgba(0,0,0,0.3)]">
+    <div class="flex items-center h-full pointer-events-auto">
+        <button id="start-btn" class="start-button-gradient pl-4 pr-5 h-full flex items-center gap-2 active:brightness-90 transition-all font-display italic text-white font-bold drop-shadow-md tracking-tighter text-base">
+            <span class="text-green-200 w-5 h-5 flex items-center"><svg fill="currentColor" viewBox="0 0 48 48"><path d="M24 0.757355L47.2426 24L24 47.2426L0.757355 24L24 0.757355ZM21 35.7574V12.2426L9.24264 24L21 35.7574Z"></path></svg></span>
+            HORIZONTE
+        </button>
+    </div>
+    <div class="h-full bg-[#0d99ff] border-l border-[#005ccc] shadow-[inset_1px_0_0_rgba(255,255,255,0.4)] flex items-center px-4 gap-3 text-white text-[11px] font-medium cursor-default pointer-events-auto">
+        <span class="material-symbols-outlined text-[13px] opacity-80" title="Security Center: Normal">shield</span>
+        <span class="material-symbols-outlined text-[14px] cursor-pointer hover:opacity-100 text-red-200" id="taskbar-wifi" title="Sem rede. Clique para conectar." onclick="document.getElementById('wifi-menu').classList.toggle('hidden')">wifi_off</span>
+        <span class="material-symbols-outlined text-[14px] opacity-90">volume_up</span>
+        <span id="taskbar-clock" class="ml-2 font-mono">11:59 PM</span>
+    </div>
+</footer>
+
+<div id="start-menu" class="fixed bottom-[30px] left-0 w-[350px] bg-white rounded-tr-xl shadow-2xl border-t border-r border-slate-400 hidden z-[70] overflow-hidden flex flex-col h-[400px]">
+    <div class="window-header p-4 flex items-center gap-3 text-white shadow-md">
+        <div class="w-12 h-12 bg-white/20 border border-white/40 rounded shadow-inner p-2 flex items-center justify-center"><span class="material-symbols-outlined text-white text-3xl drop-shadow">science</span></div>
+        <div class="flex flex-col"><span class="font-bold text-lg drop-shadow-md">Valenko Operative</span><span class="text-xs opacity-90" id="start-subtitle">Session 004</span></div>
+    </div>
+    <div class="flex-1 bg-white flex">
+        <div class="flex-1 p-2 flex flex-col">
+            <div class="flex items-center gap-3 p-2 hover:bg-[#316ac5] hover:text-white rounded cursor-pointer transition-colors" onclick="openWindow('window-browser'); document.getElementById('start-menu').classList.add('hidden')"><span class="material-symbols-outlined text-blue-500">public</span><span class="text-sm font-medium">Horizon Explorer</span></div>
+            <div class="flex-1"></div>
+            <div class="border-t border-slate-200 mt-2"></div>
+            <div class="flex items-center gap-3 p-2 hover:bg-[#316ac5] hover:text-white rounded cursor-pointer mt-1 font-bold text-red-600 transition-colors" onclick="alert('Esta ação limpará o localStorage para iniciar o jogo do zero.'); localStorage.clear(); location.reload();"><span class="material-symbols-outlined">power_settings_new</span><span class="text-sm border-b border-transparent">Reset System</span></div>
+        </div>
+        <div class="w-[140px] bg-[#d3e5fa] border-l border-[#95bcee] p-2 flex flex-col gap-1">
+            <div class="flex items-center gap-2 p-1.5 hover:bg-[#316ac5] hover:text-white rounded cursor-pointer font-bold text-blue-900 text-xs transition-colors" onclick="openWindow('window-explorer'); document.getElementById('start-menu').classList.add('hidden')"><span class="material-symbols-outlined text-[#316ac5] text-base drop-shadow-sm">folder</span> My Documents</div>
+            <div class="border-b border-[#a9c9f2] my-1 mx-1"></div>
+            <div class="flex items-center gap-2 p-1.5 hover:bg-[#316ac5] hover:text-white rounded cursor-pointer font-bold text-blue-900 text-xs transition-colors"><span class="material-symbols-outlined text-[#316ac5] text-base">settings</span> Control Panel</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    /* ==============================
+       STATE & VARIABLES
+       ============================== */
+    const STORAGE_KEY = 'horizonte_vfs_3';
+    let fileSystem = [];
+    let puzzleUnlocks = { audio: false, archive: false, observatory: false, minigame: false, filter: false };
+    let wifiState = { connected: false };
+
+    // Default System Apps - these do not exist in localStorage unless dynamically modified (we keep them as base rules)
+    const SYSTEM_APPS = [
+        { id: 'sys-docs', name: 'My Documents', icon: 'folder', color: 'text-yellow-300', parent: 'desktop', action: "openWindow('window-explorer')" },
+        { id: 'sys-bin', name: 'Recycle Bin', icon: 'delete', color: 'text-slate-300', parent: 'desktop', action: "openTrash()" },
+        { id: 'app-web', name: 'Horizon Explorer', icon: 'public', color: 'text-blue-300', parent: 'desktop', action: "openWindow('window-browser')" },
+        { id: 'app-external-icn', name: 'External Device', icon: 'usb', color: 'text-slate-300', parent: 'desktop', action: "openWindow('app-external')" },
+        { id: 'app-audio-icn', name: 'Audio', icon: 'folder_open', color: 'text-yellow-400', parent: 'desktop', action: "openWindow('window-audio')", hidden: true, puzzleKey: 'audio' },
+        { id: 'app-archive-icn', name: 'Archive', icon: 'folder_zip', color: 'text-yellow-500', parent: 'desktop', action: "openWindow('window-archive')", hidden: true, puzzleKey: 'archive' },
+        { id: 'app-minigame-icn', name: 'MiniGame.exe', icon: 'sports_esports', color: 'text-red-500', parent: 'desktop', action: "openWindow('app-minigame')", hidden: true, puzzleKey: 'minigame' },
+        { id: 'app-filter-icn', name: 'Filter Console', icon: 'admin_panel_settings', color: 'text-blue-400', parent: 'desktop', action: "openWindow('app-filter')", hidden: true, puzzleKey: 'filter' }
+    ];
+
+    function loadFileSystem() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            const data = JSON.parse(saved);
+            fileSystem = data.files || [];
+            puzzleUnlocks = data.unlocks || puzzleUnlocks;
+            wifiState = data.wifi || { connected: false };
+        } else {
+            // First time loading Simulation (Lore inject)
+            fileSystem = [
+                { id: 'f_lor1', name: 'Diretrizes_Laboratorio.txt', type: 'text', content: 'Protocolos de Contenção\n1. O Wi-fi Valenko_Lab_5G está isolado. Use acesso STARGAZER.\n2. Inicie varredura pela USB. \n3. Evite olhar o feixe de luz principal prolongadamente.', locked: false, parentId: 'window-explorer', isDeleted: false },
+                { id: 'f_lor2', name: 'Registro_Espectral_004.log', type: 'text', content: 'As oscilações chegaram a -36dB na madrugada.\nA fenda não é espacial, é perceptiva. O barulho ensurdecedor é apenas uma resposta à nossa própria instrumentação excessiva.', locked: true, password: 'VALENKO1980', parentId: 'window-explorer', isDeleted: false },
+                { id: 'f_lor3', name: 'Anomalia_Vectorial.md', type: 'text', content: '# CALCULO VAZAMENTO\nSe a constante x=18 e o pico transversal é 42, então a projeção se divide...\nRA e DEC estão invertidos na carta. \n(18.36 / 42.11) -> Posicione o satélite!', locked: true, password: 'ORION', parentId: 'window-explorer', isDeleted: false }
+            ];
+            saveFileSystem();
+        }
+        updateWifiUI();
+        renderFileSystem();
+    }
+
+    function saveFileSystem() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ files: fileSystem, unlocks: puzzleUnlocks, wifi: wifiState }));
+        renderFileSystem();
+    }
+
+    /* ==============================
+       RENDERING & DOM
+       ============================== */
+    function renderFileSystem() {
+        // Clear containers
+        const desktopCont = document.getElementById('desktop-icons-container');
+        const explorerCont = document.getElementById('explorer-content');
+        desktopCont.innerHTML = `<div class="p-4 flex flex-col gap-2 w-24 pointer-events-auto h-full flex-wrap content-start" id="desktop-flow"></div>`;
+        explorerCont.innerHTML = ``;
+        const desktopFlow = document.getElementById('desktop-flow');
+
+        // 1. Render Fixed System Icons directly to desktop flow
+        SYSTEM_APPS.forEach(app => {
+            if(!app.hidden || puzzleUnlocks[app.puzzleKey]) {
+                const el = document.createElement('div');
+                el.className = 'w-20 flex flex-col items-center gap-1 cursor-pointer p-1.5 rounded hover:bg-white/20 hover:border-white/10 border border-transparent transition-colors mb-2';
+                el.setAttribute('ondblclick', app.action);
+                el.innerHTML = `<span class="material-symbols-outlined text-white text-[42px] drop-shadow-md ${app.color||''}">${app.icon}</span><span class="text-white text-[11px] text-center font-medium drop-shadow-[1px_1px_1px_rgba(0,0,0,0.8)] leading-tight bg-black/20 px-1 rounded shadow-sm">${app.name}</span>`;
+                desktopFlow.appendChild(el);
+            }
+        });
+
+        // 2. Render User Files
+        const visibleFiles = fileSystem.filter(f => !f.isDeleted);
+        document.getElementById('exp-count').innerText = `${visibleFiles.filter(f => f.parentId === 'window-explorer').length} object(s)`;
+
+        visibleFiles.forEach(f => {
+            const isDesktop = f.parentId === 'desktop' || !f.parentId;
+            const container = isDesktop ? desktopCont : explorerCont;
+            
+            const el = document.createElement('div');
+            el.dataset.fileId = f.id;
+
+            const iconCol = isDesktop ? 'text-slate-100 drop-shadow-md' : 'text-[#316ac5] drop-shadow-none';
+            const textCol = isDesktop ? 'text-white drop-shadow-[1px_1px_1px_rgba(0,0,0,0.8)] bg-black/20' : 'text-slate-800 drop-shadow-none';
+            const lockHtml = f.locked ? `<span class="material-symbols-outlined absolute -top-1 -right-1 text-red-600 text-[14px] bg-white rounded-full p-[1px] shadow">lock</span>` : '';
+
+            if (isDesktop && typeof f.x === 'number') {
+                el.className = 'absolute w-20 flex flex-col items-center gap-1 cursor-pointer p-1.5 rounded hover:bg-white/20 border border-transparent pointer-events-auto icon-draggable';
+                el.style.left = f.x + 'px'; el.style.top = f.y + 'px';
+                makeIconDraggable(el, f.id, true);
+            } else {
+                el.className = 'w-20 flex flex-col items-center gap-1 cursor-pointer p-1.5 rounded hover:bg-blue-100 border border-transparent focus:bg-blue-200 pointer-events-auto';
+                if(isDesktop) desktopFlow.appendChild(el); // flow fallback
+            }
+
+            el.innerHTML = `<div class="relative"><span class="material-symbols-outlined text-[42px] ${iconCol}">description</span>${lockHtml}</div><span class="text-[11px] text-center font-medium leading-tight px-1 rounded break-all select-none ${textCol}">${f.name}</span>`;
+
+            el.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); showFileContextMenu(e, f.id); });
+            el.addEventListener('dblclick', () => openFile(f.id));
+            if(isDesktop && typeof f.x === 'number') container.appendChild(el); else if(!isDesktop) explorerCont.appendChild(el);
+        });
+    }
+
+    /* ==============================
+       FILE OPERATIONS
+       ============================== */
+    function createFile(type) {
+        hideContextMenu();
+        const id = 'f_' + Date.now();
+        // create near middle of desktop
+        const x = window.innerWidth / 2; const y = Math.max(0, window.innerHeight / 2 - 100);
+        fileSystem.push({ id: id, name: "Novo_Documento.txt", type: "text", content: "", locked: false, password: "", isDeleted: false, parentId: "desktop", x: x, y: y });
+        saveFileSystem();
+        openFile(id);
+    }
+    
+    function openFile(id) {
+        hideContextMenu();
+        const f = fileSystem.find(f => f.id === id);
+        if(!f) return;
+        if (f.locked) {
+            promptModal("File Secured", "Local decryption required. Input password:", "lock", (val) => {
+                if (val.toUpperCase() === f.password.toUpperCase() || val === f.password) {
+                    launchNotepad(f); closePrompt();
+                } else {
+                    document.getElementById('prompt-err').classList.remove('hidden');
+                    document.getElementById('modal-prompt').classList.add('animate-shake');
+                    setTimeout(()=>document.getElementById('modal-prompt').classList.remove('animate-shake'), 400);
+                }
+            });
+        } else launchNotepad(f);
+    }
+
+    function launchNotepad(f) {
+        document.getElementById('notepad-file-id').value = f.id;
+        document.getElementById('notepad-title').innerText = f.name + " - Notepad";
+        document.getElementById('notepad-content').value = f.content || '';
+        openWindow('window-notepad');
+    }
+
+    function saveNotepadFile() {
+        const id = document.getElementById('notepad-file-id').value;
+        const f = fileSystem.find(f => f.id === id);
+        if(f) { f.content = document.getElementById('notepad-content').value; saveFileSystem(); const sb = event.target; sb.innerText = "Saved!"; setTimeout(()=>sb.innerText="Save", 1000); }
+    }
+
+    let contextTargetId = null;
+    function contextDeleteFile() { hideContextMenu(); if(!contextTargetId) return; const f = fileSystem.find(f => f.id === contextTargetId); if(f) { f.isDeleted = true; saveFileSystem(); } }
+    function contextSetPassword() {
+        hideContextMenu(); if(!contextTargetId) return; const f = fileSystem.find(f => f.id === contextTargetId); if(!f) return;
+        promptModal("Set Password", "New password for " + f.name + ":", "key", (val) => { if(val) { f.locked = true; f.password = val; saveFileSystem(); closePrompt(); } });
+    }
+    function contextOpenFile() { hideContextMenu(); if(contextTargetId) openFile(contextTargetId); }
+    function openTrash() {
+        const dc = fileSystem.filter(f => f.isDeleted).length;
+        if (dc === 0) { alert("Lixeira está vazia."); return; }
+        if (confirm(`A Lixeira contém ${dc} arquivo(s). Deseja esvaziar permanentemente?`)) { fileSystem = fileSystem.filter(f => !f.isDeleted); saveFileSystem(); alert("Esvaziada com sucesso."); }
+    }
+
+    /* ==============================
+       DRAG, UI & WINDOWS
+       ============================== */
+    function updateClock() { const d = new Date(); let h=d.getHours(), m=d.getMinutes(); const a=h>=12?'PM':'AM'; document.getElementById('taskbar-clock').innerText=(h%12||12)+':'+(m<10?'0':'')+m+' '+a; }
+    setInterval(updateClock, 1000); updateClock();
+
+    function closeWindow(id) { document.getElementById(id).classList.add('hidden'); }
+    let highestZ = 10;
+    function openWindow(id) { const w = document.getElementById(id); if(w){ w.classList.remove('hidden'); highestZ++; w.style.zIndex=highestZ; if(id==='window-browser') renderBrowser(); } }
+
+    const desks = document.querySelectorAll('.sys-window');
+    desks.forEach(w => {
+        w.addEventListener('mousedown', () => { highestZ++; w.style.zIndex=highestZ; });
+        const h = w.querySelector('.draggable-handle');
+        if (h && !h.classList.contains('cursor-default')) makeElementDraggable(h, w, null);
+    });
+
+    function makeIconDraggable(el, fileId) {
+        makeElementDraggable(el, el, (newX, newY) => {
+            const f = fileSystem.find(f => f.id === fileId);
+            if(f) { f.x = newX; f.y = newY; saveFileSystem(); }
+        });
+    }
+
+    function makeElementDraggable(handle, target, onDrop) {
+        let dragging = false, sx, sy, il, it;
+        handle.addEventListener('mousedown', e => {
+            if(e.target.closest('button')) return;
+            dragging=true; sx=e.clientX; sy=e.clientY; target.style.transform='none';
+            const r=target.getBoundingClientRect(); il=r.left; it=r.top;
+            target.style.left=il+'px'; target.style.top=it+'px'; document.body.style.userSelect='none';
+        });
+        document.addEventListener('mousemove', e => {
+            if(!dragging) return;
+            const nx = il + (e.clientX - sx);
+            const ny = Math.max(0, it + (e.clientY - sy)); // Limit Y to not hide header
+            target.style.left = nx + 'px'; target.style.top = ny + 'px';
+        });
+        document.addEventListener('mouseup', () => { if(dragging){ dragging=false; document.body.style.userSelect=''; if(onDrop) onDrop(parseInt(target.style.left), parseInt(target.style.top));} });
+    }
+
+    /* ==============================
+       MENUS & PROMPTS
+       ============================== */
+    const deskMenu = document.getElementById('desktop-context-menu'), fileMenu = document.getElementById('file-context-menu');
+    document.getElementById('desktop').addEventListener('contextmenu', e => {
+        if(e.target.closest('.sys-window') || e.target.closest('footer')) return;
+        e.preventDefault(); hideContextMenu(); deskMenu.style.left=e.clientX+'px'; deskMenu.style.top=Math.max(0,e.clientY-10)+'px'; deskMenu.classList.remove('hidden'); deskMenu.classList.add('flex');
+    });
+    function showFileContextMenu(e, id) { hideContextMenu(); contextTargetId=id; fileMenu.style.left=e.clientX+'px'; fileMenu.style.top=e.clientY+'px'; fileMenu.classList.remove('hidden'); fileMenu.classList.add('flex'); }
+    function hideContextMenu() { deskMenu.classList.add('hidden'); deskMenu.classList.remove('flex'); fileMenu.classList.add('hidden'); fileMenu.classList.remove('flex'); contextTargetId=null; }
+    
+    let currentPromptCb=null;
+    function promptModal(title, text, icon, cb) {
+        document.getElementById('prompt-title').innerText=title; document.getElementById('prompt-desc').innerText=text; document.getElementById('prompt-icon').innerText=icon;
+        const i=document.getElementById('prompt-input'); i.value=''; document.getElementById('prompt-err').classList.add('hidden');
+        document.getElementById('modal-prompt').style.left=(window.innerWidth/2-160)+'px'; document.getElementById('modal-prompt').style.top='30%';
+        openWindow('modal-prompt'); i.focus(); currentPromptCb=cb;
+        document.getElementById('prompt-confirm').onclick=()=>{if(currentPromptCb)currentPromptCb(i.value.trim());};
+    }
+    document.getElementById('prompt-input').addEventListener('keydown', e=>{if(e.key==='Enter')document.getElementById('prompt-confirm').click();});
+    function closePrompt() { closeWindow('modal-prompt'); currentPromptCb=null; }
+
+    /* ==============================
+       WIFI & WEB BROWSER
+       ============================== */
+    function updateWifiUI() {
+        const icn = document.getElementById('taskbar-wifi');
+        const stext = document.getElementById('wifi-status-text');
+        if (wifiState.connected) {
+            icn.innerText = 'wifi'; icn.classList.remove('text-red-200'); icn.classList.add('text-green-500'); icn.title = "Valenko_Lab_5G: Connected";
+            stext.innerText = "Conectado"; stext.classList.add('text-green-600');
+        } else {
+            icn.innerText = 'wifi_off'; icn.classList.add('text-red-200'); icn.classList.remove('text-green-500'); icn.title = "Offline";
+            stext.innerText = "Seguro (Desconectado)"; stext.classList.remove('text-green-600');
+        }
+    }
+    function connectWifiPrompt() {
+        if(wifiState.connected) return;
+        document.getElementById('wifi-menu').classList.add('hidden');
+        promptModal("Rede Wi-Fi", "Valenko_Lab_5G requer senha WPA2:", "wifi_lock", (val) => {
+            if(val.toUpperCase() === 'STARGAZER') {
+                wifiState.connected = true; saveFileSystem(); closePrompt(); updateWifiUI();
+            } else {
+                document.getElementById('prompt-err').innerText = 'Senha incorreta.'; document.getElementById('prompt-err').classList.remove('hidden'); document.getElementById('modal-prompt').classList.add('animate-shake'); setTimeout(()=>document.getElementById('modal-prompt').classList.remove('animate-shake'), 400);
+            }
+        });
+    }
+    function renderBrowser() {
+        const c = document.getElementById('browser-content');
+        if(wifiState.connected) {
+            c.innerHTML = `
+                <div class="max-w-3xl mx-auto py-8 px-6 font-sans text-slate-800">
+                    <div class="border-b-4 border-red-600 pb-2 mb-6 flex justify-between items-end">
+                        <h1 class="text-4xl font-bold tracking-tighter text-red-600">G11 NOTÍCIAS</h1><span class="text-xs font-bold text-slate-400">Edição Local</span>
+                    </div>
+                    <h2 class="text-3xl font-extrabold leading-tight tracking-tight mb-4">Tremores e luzes anômalas fecham acesso à estrada do Laboratório nas montanhas</h2>
+                    <p class="text-lg text-slate-600 mb-6 font-serif">Moradores relataram ruídos ensurdecedores durante a madrugada. Defesa civil isolou perímetro sob alegação de falha estrutural sísmica, mas astrônomos locais contestam versão oficial.</p>
+                    <img src="https://images.unsplash.com/photo-1518066000714-58c45f1a2c0a?w=800&auto=format&fit=crop" class="w-full h-64 object-cover mb-6 border border-slate-300 shadow-sm" alt="Observatório à noite">
+                    <div class="prose font-serif text-slate-700 max-w-none text-justify">
+                        <p>O cume da Serra da Estrela amanheceu sob forte bloqueio militar nesta terça-feira. Durante a noite de segunda, diversos relatos nas redes sociais apontaram para flashes azulados no céu noturno, exatamente sobre as instalações do antigo Laboratório Valenko de Rádio-Astronomia.</p>
+                        <p>Segundo testemunhas que costumam acessar as trilhas próximas, os equipamentos do domo principal (M2) estavam totalmente voltados para o vácuo da Nebulosa de Orion, contrariando o ciclo padrão de observações agendadas do mês.</p>
+                        <p class="border-l-4 border-red-600 pl-4 italic text-slate-600">"Não era um tremor de chão, era como se o ar estivesse vibrando. A estática tomou conta dos rádios e celulares no momento do pico de luz. A sensação era de que algo estava tentando se projetar na atmosfera", disse um dos campistas retirados da área de risco.</p>
+                        <p>Fontes extraoficiais ligadas ao centro de energia afirmam que os reatores locais de contenção ("Filtros OBS") foram retirados do padrão de contingência horas antes do incidente. Tentamos contato com o pesquisador chefe, mas as comunicações virtuais do local não respondem DNS desde às 03:00 am.</p>
+                    </div>
+                </div>`;
+        } else {
+            c.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-500 gap-4"><span class="material-symbols-outlined text-[64px] text-slate-300">wifi_off</span><h2 class="text-xl font-bold">Sem conexão com a Internet</h2><p class="text-sm">O DNS dns.valenko não pôde ser resolvido. Verifique sua conexão.</p></div>`;
+        }
+    }
+
+    /* ==============================
+       THE PUZZLE LOGIC
+       ============================== */
+    function checkPuzzle(id, exp, unlocks) {
+        let v = id==='starmap' ? document.getElementById('input-starmap-1').value.trim()+' '+document.getElementById('input-starmap-2').value.trim() : id==='observatory' ? document.getElementById('input-observatory').value : document.getElementById('input-'+id).value.trim().toUpperCase();
+        if(v===exp.toUpperCase() || (id==='observatory'&&v===exp)) {
+            const err=document.getElementById('err-'+id); if(err) err.classList.add('hidden');
+            event.target.classList.replace('bg-slate-800','bg-green-700'); event.target.classList.add('bg-green-600','text-white'); event.target.innerText="VERIFIED"; event.target.disabled=true;
+            unlocks.forEach(k => puzzleUnlocks[k]=true); saveFileSystem();
+            if(id==='starmap'){ document.getElementById('input-starmap-1').disabled=document.getElementById('input-starmap-2').disabled=true; }
+            if(id==='filter'){ document.getElementById('desktop').classList.add('stabilized'); document.getElementById('start-subtitle').innerText="System Stabilized"; openWindow('modal-final'); closeWindow('app-filter'); }
+        } else {
+            const i = document.getElementById(id==='starmap'?'input-starmap-1':'input-'+id);
+            if(i){ i.value=''; i.classList.add('border-red-500'); }
+            const erElem=document.getElementById('err-'+id), wElem=erElem.closest('.sys-window');
+            wElem.classList.add('animate-shake'); erElem.classList.remove('hidden');
+            setTimeout(()=>{if(i)i.classList.remove('border-red-500'); wElem.classList.remove('animate-shake');},500);
+        }
+    }
+    let mx=0; function minigameClick(b){ if(!b.classList.contains('bg-green-600')){ b.classList.add('bg-green-600','text-white'); b.classList.remove('text-transparent'); mx++;} if(mx>=4){ setTimeout(()=>{document.getElementById('minigame-container').classList.add('hidden'); document.getElementById('minigame-success').classList.remove('hidden'); puzzleUnlocks['filter']=true; saveFileSystem();},300); } }
+
+    loadFileSystem();
+</script>
+</body>
+</html>
